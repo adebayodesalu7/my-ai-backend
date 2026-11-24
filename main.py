@@ -20,7 +20,7 @@ co = cohere.Client(COHERE_API_KEY) # Initialize Cohere
 
 # Initialize Pinecone (REMOVE SentenceTransformer)
 pc = Pinecone(api_key=PINECONE_API_KEY)
-index = pc.Index("my-templates-v2")
+index = pc.Index("my-templates-v3")
 
 class ChatRequest(BaseModel):
     question: str
