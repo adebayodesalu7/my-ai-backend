@@ -3,3 +3,5 @@ uvicorn
 groq
 requests
 pydantic
+pinecone
+cohere
