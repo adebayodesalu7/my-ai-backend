@@ -1,25 +1,26 @@
 import os
 import requests
 import json
+import cohere # New import
 from fastapi import FastAPI
 from pydantic import BaseModel
 from groq import Groq
 from pinecone import Pinecone
-from sentence_transformers import SentenceTransformer
 
 app = FastAPI()
 
 # Load Keys
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 SERPER_API_KEY = os.environ.get("SERPER_API_KEY")
-PINECONE_API_KEY = os.environ.get("PINECONE_API_KEY") # We will add this to Render next
+PINECONE_API_KEY = os.environ.get("PINECONE_API_KEY")
+COHERE_API_KEY = os.environ.get("COHERE_API_KEY") # New key
 
 client = Groq(api_key=GROQ_API_KEY)
+co = cohere.Client(COHERE_API_KEY) # Initialize Cohere
 
-# Initialize Pinecone and the embedding model
+# Initialize Pinecone (REMOVE SentenceTransformer)
 pc = Pinecone(api_key=PINECONE_API_KEY)
 index = pc.Index("my-templates-v2")
-embed_model = SentenceTransformer('all-MiniLM-L6-v2')
 
 class ChatRequest(BaseModel):
     question: str
@@ -28,10 +29,17 @@ class ChatRequest(BaseModel):
 async def chat(request: ChatRequest):
     question = request.question
 
-    # 1. SEARCH PINECONE (Our new RAG step)
+    # 1. SEARCH PINECONE using Cohere Embeddings
     print("Searching templates in Pinecone...")
-    query_vector = embed_model.encode(question).tolist()
-    # Get the top 3 most relevant chunks from your template
+    # Use Cohere to turn the question into a vector
+    response = co.embed(
+        texts=[question],
+        model="embed-english-v3.0",
+        input_type="search_query"
+    )
+    query_vector = response.embeddings[0]
+    
+    # Search Pinecone with the Cohere vector
     search_results = index.query(vector=query_vector, top_k=3, include_metadata=True)
     
     template_context = ""
