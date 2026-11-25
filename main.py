@@ -5,33 +5,30 @@ import cohere
 from fastapi import FastAPI
 from pydantic import BaseModel
 from typing import Optional
-from groq import Groq
 from pinecone import Pinecone
 
 app = FastAPI()
 
 # Load Keys
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
-SERPER_API_KEY = os.environ.get("SERPER_API_KEY")
+CLOUDFLARE_ACCOUNT_ID = os.environ.get("CLOUDFLARE_ACCOUNT_ID")
+CLOUDFLARE_API_TOKEN = os.environ.get("CLOUDFLARE_API_TOKEN")
 PINECONE_API_KEY = os.environ.get("PINECONE_API_KEY")
 COHERE_API_KEY = os.environ.get("COHERE_API_KEY")
 
-client = Groq(api_key=GROQ_API_KEY)
 co = cohere.Client(COHERE_API_KEY)
-
 pc = Pinecone(api_key=PINECONE_API_KEY)
 index = pc.Index("my-templates-v3")
 
 class ChatRequest(BaseModel):
     question: str
-    image_base64: Optional[str] = None  # We added an optional image field
+    image_base64: Optional[str] = None
 
 @app.post("/chat")
 async def chat(request: ChatRequest):
     question = request.question
-
-    # 1. SEARCH PINECONE (Only if there is no image, to save tokens)
     template_context = ""
+
+    # 1. SEARCH PINECONE
     if not request.image_base64:
         print("Searching templates in Pinecone...")
         response = co.embed(
@@ -46,36 +43,44 @@ async def chat(request: ChatRequest):
             if 'text' in match['metadata']:
                 template_context += match['metadata']['text'] + "\n\n"
 
-    # 2. ASK GROQ
-    print("Asking Groq...")
+    # 2. ASK CLOUDFLARE
+    print("Asking Cloudflare...")
     
-    # IF THERE IS AN IMAGE, use a Vision Model
+    # Cloudflare's endpoint for their AI models
+    cf_url = f"https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/run/@cf/meta/llama-3-8b-instruct"
+    cf_headers = {
+        "Authorization": f"Bearer {CLOUDFLARE_API_TOKEN}",
+        "Content-Type": "application/json"
+    }
+
     if request.image_base64:
-        messages = [
-            {
-                "role": "user",
-                "content": [
+        # Cloudflare Vision Model (using their LLaVA model)
+        cf_url = f"https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/run/@cf/llava-hf/llava-1.5-7b-hf"
+        payload = {
+            "messages": [
+                {"role": "user", "content": [
                     {"type": "text", "text": question},
                     {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{request.image_base64}"}}
-                ]
-            }
-        ]
-        model_to_use = "qwen/qwen3.8-27b" # Free vision model on Groq
-        
-    # IF NO IMAGE, use the Text Model
+                ]}
+            ]
+        }
     else:
-        messages = [
-            {"role": "system", "content": "You are an expert Senior Web Developer. Use the provided HTML/CSS template context to help the user build or modify their website. Always output clean, modern, and fully responsive code. When providing HTML, CSS, or JS, always put it inside a single markdown code block so it can be easily previewed. If the answer isn't in the context, use your own vast coding knowledge."},
-            {"role": "user", "content": f"Template Context:\n{template_context}\n\nUser Request: {question}"}
-        ]
-        model_to_use = "openai/gpt-oss-120b"
+        # Cloudflare Text Model
+        system_prompt = "You are an expert Senior Web Developer. Use the provided HTML/CSS template context to help the user build or modify their website. Always output clean, modern, and fully responsive code. When providing HTML, CSS, or JS, always put it inside a single markdown code block so it can be easily previewed."
+        payload = {
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"Template Context:\n{template_context}\n\nUser Request: {question}"}
+            ]
+        }
 
-    chat_completion = client.chat.completions.create(
-        messages=messages,
-        model=model_to_use,
-    )
+    # Make the request to Cloudflare
+    cf_response = requests.post(cf_url, headers=cf_headers, json=payload)
+    cf_data = cf_response.json()
     
-    answer = chat_completion.choices[0].message.content
+    # Cloudflare returns the text in data['result']['response']
+    answer = cf_data.get("result", {}).get("response", "Sorry, I couldn't generate a response.")
+    
     return {"answer": answer}
 
 @app.get("/")
