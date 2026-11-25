@@ -49,7 +49,7 @@ async def chat(request: ChatRequest):
     # 2. ASK CLOUDFLARE
     print("Asking Cloudflare...")
     
-    cf_url = f"https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/run/@cf/meta/llama-3-8b-instruct"
+    cf_url = f"https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/run/@cf/qwen/qwen2.5-coder-32b-instruct"
     cf_headers = {
         "Authorization": f"Bearer {CLOUDFLARE_API_TOKEN}",
         "Content-Type": "application/json"
