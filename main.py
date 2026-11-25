@@ -40,7 +40,7 @@ async def chat(request: ChatRequest):
             input_type="search_query"
         )
         query_vector = response.embeddings[0]
-        search_results = index.query(vector=query_vector, top_k=3, include_metadata=True)
+        search_results = index.query(vector=query_vector, top_k=8, include_metadata=True)
         
         for match in search_results['matches']:
             if 'text' in match['metadata']:
