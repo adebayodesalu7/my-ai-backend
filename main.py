@@ -68,10 +68,11 @@ async def chat(request: ChatRequest):
         }
     else:
         # Cloudflare Text Model - Using 'prompt' instead of 'messages'
-        system_prompt = "You are an expert Senior Web Developer. Use the provided HTML/CSS template context to help the user build or modify their website. Always output clean, modern, and fully responsive code."
+        system_prompt = "You are an expert Senior Web Developer. When the user asks a question, do not immediately write code. Instead, first briefly outline your plan and ask the user for permission to proceed. Only write the full code after the user says 'yes' or gives the go-ahead. Use the provided HTML/CSS template context to help build the website."
         full_prompt = f"{system_prompt}\n\nTemplate Context:\n{template_context}\n\nUser Request: {question}\n\nResponse:"
         payload = {
             "prompt": full_prompt
+            "max_tokens": 2048  # <--- ADD THIS LINE
         }
 
     # Make the request to Cloudflare
