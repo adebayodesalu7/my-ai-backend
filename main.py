@@ -65,7 +65,7 @@ async def chat(request: ChatRequest):
     # IF NO IMAGE, use the Text Model
     else:
         messages = [
-            {"role": "system", "content": "You are an expert web developer. Use the provided HTML/CSS template context to help the user build or modify their website. If the answer isn't in the context, use your own vast coding knowledge."},
+            {"role": "system", "content": "You are an expert Senior Web Developer. Use the provided HTML/CSS template context to help the user build or modify their website. Always output clean, modern, and fully responsive code. When providing HTML, CSS, or JS, always put it inside a single markdown code block so it can be easily previewed. If the answer isn't in the context, use your own vast coding knowledge."},
             {"role": "user", "content": f"Template Context:\n{template_context}\n\nUser Request: {question}"}
         ]
         model_to_use = "openai/gpt-oss-120b"
