@@ -72,7 +72,7 @@ async def chat(request: ChatRequest):
         full_prompt = f"{system_prompt}\n\nTemplate Context:\n{template_context}\n\nUser Request: {question}\n\nResponse:"
         payload = {
             "prompt": full_prompt
-            "max_tokens": 2048  # <--- ADD THIS LINE
+            "max_tokens": 2048
         }
 
     # Make the request to Cloudflare
